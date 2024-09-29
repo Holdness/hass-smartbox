@@ -15,6 +15,8 @@ from .const import (
     CONF_ACCOUNTS,
     CONF_API_NAME,
     CONF_BASIC_AUTH_CREDS,
+    CONF_X_REFERER,
+    CONF_X_SERIALID,
     CONF_DEVICE_IDS,
     CONF_PASSWORD,
     CONF_SESSION_RETRY_ATTEMPTS,
@@ -65,6 +67,8 @@ CONFIG_SCHEMA = vol.Schema(
             {
                 vol.Required(CONF_ACCOUNTS): vol.All(cv.ensure_list, [ACCOUNT_SCHEMA]),
                 vol.Required(CONF_BASIC_AUTH_CREDS): cv.string,
+                vol.Required(CONF_X_REFERER): cv.string,
+                vol.Required(CONF_X_SERIALID): cv.string
             }
         )
     },
@@ -87,6 +91,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     _LOGGER.debug(f"accounts: {accounts_cfg}")
     basic_auth_creds = config[DOMAIN][CONF_BASIC_AUTH_CREDS]
     _LOGGER.debug(f"basic_auth_creds: {basic_auth_creds}")
+    x_referer = config[DOMAIN][CONF_X_REFERER]
+    _LOGGER.debug(f"x_referer: {x_referer}")
+    x_serialid = config[DOMAIN][CONF_X_SERIALID]
+    _LOGGER.debug(f" x_serialid: {x_serialid}")
 
     hass.data[DOMAIN][SMARTBOX_DEVICES] = []
     hass.data[DOMAIN][SMARTBOX_NODES] = []
@@ -96,6 +104,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             hass,
             account[CONF_API_NAME],
             basic_auth_creds,
+            x_referer, 
+            x_serialid, 
             account[CONF_USERNAME],
             account[CONF_PASSWORD],
             account[CONF_SESSION_RETRY_ATTEMPTS],
