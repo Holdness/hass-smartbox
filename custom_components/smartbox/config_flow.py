@@ -12,7 +12,7 @@ import smartbox
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
-    {("api_name"): str, "basic_auth_creds": str, "username": str, "password": str}
+    {("api_name"): str, "basic_auth_creds": str, "x_referer": str, "x_serialid": str, "username": str, "password": str}
 )
 
 
@@ -28,6 +28,8 @@ async def validate_input(hass: core.HomeAssistant, data):
 
     _check_input(data.get("api_name"))
     _check_input(data.get("basic_auth_creds"))
+    _check_input(data.get('x_referer'))
+    _check_input(data.get('x_serialid'))
     _check_input(data.get("username"))
     _check_input(data.get("password"))
 
@@ -40,6 +42,8 @@ async def validate_input(hass: core.HomeAssistant, data):
             smartbox.Session,
             data["api_name"],
             data["basic_auth_creds"],
+            data["x_referer"],
+            data["x_serialid"],
             data["username"],
             data["password"],
         )
