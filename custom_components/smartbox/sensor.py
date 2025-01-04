@@ -285,8 +285,8 @@ class SamplesSensor(SmartboxSensorBase):
 
     @property
     def native_value(self) -> float | None:
-        return self._node.get_energy_used(self._node.node_type, self._node.addr, int(round(time.time() - time.time() % 3600)) - 3600, int(round(time.time() - time.time() % 3600) + 1800)
-        )
+        return self._node.get_energy_used(self._node._samples)
+        
 
 class ChargeLevelSensor(SmartboxSensorBase):
     """Smartbox storage heater charge level sensor"""
