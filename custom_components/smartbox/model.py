@@ -72,7 +72,9 @@ class SmartboxDevice(object):
             setup = await hass.async_add_executor_job(
                 self._session.get_setup, self._dev_id, node_info
             )
-           
+            samples: Any = await hass.async_add_executor_job(
+                self._session.get_device_samples, self._dev_id, node_info
+            )
      
             node = SmartboxNode(self, node_info, self._session, status, setup, samples = {}) 
             
@@ -260,10 +262,9 @@ class SmartboxNode(object):
         return self._samples
     
     
-    def get_energy_used(self, node_type: str, node_addr: int, start_date: int, end_date: int) -> int:
+    def get_energy_used(self, samples ) -> float:
     
-        samples: Dict[str, Any] = self._session.get_device_samples(self._device.dev_id, node_type, node_addr, start_date, end_date)
-              
+                    
         _LOGGER.debug(f"get_energy_used: Model: Samples: {samples}" )
         startKWh: int=0
         endKWh: int=0
