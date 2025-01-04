@@ -73,10 +73,10 @@ class SmartboxDevice(object):
                 self._session.get_setup, self._dev_id, node_info
             )
             samples: Any = await hass.async_add_executor_job(
-                self._session.get_device_samples, self._dev_id, node_info
+                self._session.get_device_samples, self._dev_id, node_info, int(round(time.time() - time.time() % 3600))- 3600, int(round(time.time() - time.time() % 3600)) + 1800
             )
      
-            node = SmartboxNode(self, node_info, self._session, status, setup, samples = {}) 
+            node = SmartboxNode(self, node_info, self._session, status, setup, samples) 
             
             self._nodes[(node.node_type, node.addr)] = node
 
@@ -92,6 +92,7 @@ class SmartboxDevice(object):
         self._update_manager.subscribe_to_device_power_limit(self._power_limit_update)
         self._update_manager.subscribe_to_node_status(self._node_status_update)
         self._update_manager.subscribe_to_node_setup(self._node_setup_update)
+        self._update_manager.subscribe_to_node_samples(self._node_samples_update)
 
 
         _LOGGER.debug(f"Starting UpdateManager task for device {self._dev_id}")
@@ -124,7 +125,16 @@ class SmartboxDevice(object):
             node.update_setup(node_setup)
         else:
             _LOGGER.error(f"Received setup update for unknown node {node_type} {addr}")
-           
+         
+    def _node_samples_update(
+        self, node_type: str, addr: int, node_samples: Dict[str, Any]
+    ) -> None:
+        _LOGGER.debug(f"Node samples update: {node_samples}")
+        node = self._nodes.get((node_type, addr), None)
+        if node is not None:
+            node.update_setup(node_samples)
+        else:
+            _LOGGER.error(f"Received setup update for unknown node {node_type} {addr}")       
    
     @property
     def dev_id(self) -> str:
@@ -216,8 +226,8 @@ class SmartboxNode(object):
         self._session.set_status(self._device.dev_id, self._node_info, status_args)
         # update our status locally until we get an update
         self._status |= {**status_args}
-        return self._status    
-        
+        return self._status   
+       
     @property
     def away(self):
         return self._device.away
