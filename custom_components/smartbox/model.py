@@ -129,7 +129,7 @@ class SmartboxDevice(object):
     def _node_samples_update(
         self, node_type: str, addr: int, start: int, end: int, node_samples: Dict[str, Any]
     ) -> None:
-        _LOGGER.debug(f"Node samples update:")
+        _LOGGER.debug(f"Node samples update: {node_samples}")
         node = self._nodes.get((node_type, addr), None)
         if node is not None:
             node.update_samples(node_samples)
