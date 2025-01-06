@@ -34,7 +34,7 @@ from .const import (
     PRESET_SCHEDULE,
     PRESET_SELF_LEARN,
 )
-from .types import FactoryOptionsDict, SetupDict, StatusDict
+from .types import FactoryOptionsDict, SetupDict, StatusDict, SamplesDict
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ class SmartboxDevice(object):
         self._away = False
         self._power_limit: int = 0
 
+
         
     async def initialise_nodes(self, hass: HomeAssistant) -> None:
         # Would do in __init__, but needs to be a coroutine
@@ -77,9 +78,9 @@ class SmartboxDevice(object):
             )
      
             node = SmartboxNode(self, node_info, self._session, status, setup, samples) 
-            
             self._nodes[(node.node_type, node.addr)] = node
 
+        
         _LOGGER.debug(f"Creating SocketSession for device {self._dev_id}")
         self._update_manager = UpdateManager(
             self._session,
@@ -87,6 +88,8 @@ class SmartboxDevice(object):
             reconnect_attempts=self._socket_reconnect_attempts,
             backoff_factor=self._socket_backoff_factor,
         )
+
+
 
         self._update_manager.subscribe_to_device_away_status(self._away_status_update)
         self._update_manager.subscribe_to_device_power_limit(self._power_limit_update)
@@ -127,7 +130,7 @@ class SmartboxDevice(object):
             _LOGGER.error(f"Received setup update for unknown node {node_type} {addr}")
          
     def _node_samples_update(
-        self, node_type: str, addr: int, start: int, end: int, node_samples: Dict[str, Any]
+        self, node_type: str, addr: int, start: int, end: int, node_samples: SamplesDict
     ) -> None:
         _LOGGER.debug(f"Node samples update: {node_samples}")
         node = self._nodes.get((node_type, addr), None)
@@ -268,16 +271,15 @@ class SmartboxNode(object):
         
     @property
     
-    def samples(self) -> Dict[str, Any]:
-        return self._samples
+    def samples(self) -> SamplesDict:
+        return self._samples 
     
-    def update_samples(self, samples: Dict[str,Any]) -> None:
+    def update_samples(self, samples:SamplesDict) -> None:
         _LOGGER.debug(f"Updating node {self.name} samples: {samples}")
         self._samples = samples
         
     def get_energy_used(self, samples) -> float:
-    
-                    
+             
         _LOGGER.debug(f"get_energy_used: Model: Samples: {samples}" )
         startKWh: int=0
         endKWh: int=0
