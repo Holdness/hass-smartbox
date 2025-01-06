@@ -135,6 +135,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         nodes = device.get_nodes()
         _LOGGER.debug(f"Configuring nodes for device {device.dev_id} {nodes}")
         for node in nodes:
+            _LOGGER.debug(f"Init Nodes Load {node._samples}, {node._status}")
             if not is_supported_node(node):
                 _LOGGER.error(
                     f'Nodes of type "{node.node_type}" are not yet supported; '
