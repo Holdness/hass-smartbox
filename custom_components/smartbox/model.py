@@ -56,6 +56,7 @@ class SmartboxDevice(object):
         self._socket_backoff_factor = socket_backoff_factor
         self._away = False
         self._power_limit: int = 0
+        self._samples: Dict[str,Any] = {}
 
 
         
@@ -74,12 +75,12 @@ class SmartboxDevice(object):
                 self._session.get_setup, self._dev_id, node_info
             )
             samples: Any = await hass.async_add_executor_job(
-                self._session.get_device_samples, self._dev_id, node_info, int(round(time.time() - time.time() % 3600))- 3600, int(round(time.time() - time.time() % 3600)) + 1800
+                self._session.get_device_samples, self._dev_id, node_info, 
             )
      
             node = SmartboxNode(self, node_info, self._session, status, setup, samples) 
             self._nodes[(node.node_type, node.addr)] = node
-
+            self._samples = node._samples
         
         _LOGGER.debug(f"Creating SocketSession for device {self._dev_id}")
         self._update_manager = UpdateManager(
@@ -130,8 +131,10 @@ class SmartboxDevice(object):
             _LOGGER.error(f"Received setup update for unknown node {node_type} {addr}")
          
     def _node_samples_update(
-        self, node_type: str, addr: int, start: int, end: int, node_samples: SamplesDict
+        self, node_type: str, addr: int, start: int, end: int, node_samples:  SamplesDict 
     ) -> None:
+        _LOGGER.debug(f"xxxx: {self._samples}")
+        node_samples = self._samples
         _LOGGER.debug(f"Node samples update: {node_samples}")
         node = self._nodes.get((node_type, addr), None)
         if node is not None:
@@ -272,9 +275,11 @@ class SmartboxNode(object):
     @property
     
     def samples(self) -> SamplesDict:
+        _LOGGER.debug(f"XXXXX {self._samples}")
         return self._samples 
-    
+        
     def update_samples(self, samples:SamplesDict) -> None:
+        _LOGGER.debug(f"XXXXX {self._samples}")
         _LOGGER.debug(f"Updating node {self.name} samples: {samples}")
         self._samples = samples
         
@@ -584,7 +589,7 @@ def set_preset_mode_status_update(
     elif preset_mode == PRESET_ECO:
         return {"on": True, "mode": "manual", "selected_temp": "eco"}
     elif preset_mode == PRESET_FROST:
-        return {"on": True, "mode": "manual", "selected_temp": "ice"}
+        return {"on": True, "mode": "manua"selected_temp": "ice"}
     else:
         raise ValueError(f"Unsupported preset {preset_mode} for node type {node_type}")
 
