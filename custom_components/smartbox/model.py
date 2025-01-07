@@ -75,7 +75,7 @@ class SmartboxDevice(object):
                 self._session.get_setup, self._dev_id, node_info
             )
             samples: Any = await hass.async_add_executor_job(
-                self._session.get_device_samples, self._dev_id, node_info, 
+                self._session.get_device_samples, self._dev_id, node_info
             )
      
             node = SmartboxNode(self, node_info, self._session, status, setup, samples) 
@@ -589,7 +589,7 @@ def set_preset_mode_status_update(
     elif preset_mode == PRESET_ECO:
         return {"on": True, "mode": "manual", "selected_temp": "eco"}
     elif preset_mode == PRESET_FROST:
-        return {"on": True, "mode": "manua"selected_temp": "ice"}
+        return {"on": True, "mode": "manual", "selected_temp": "ice"}
     else:
         raise ValueError(f"Unsupported preset {preset_mode} for node type {node_type}")
 
