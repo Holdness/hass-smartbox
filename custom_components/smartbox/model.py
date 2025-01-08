@@ -134,7 +134,6 @@ class SmartboxDevice(object):
         self, node_type: str, addr: int, start: int, end: int, node_samples:  SamplesDict 
     ) -> None:
         _LOGGER.debug(f"xxxx: {self._samples}")
-        node_samples = self._samples
         _LOGGER.debug(f"Node samples update: {node_samples}")
         node = self._nodes.get((node_type, addr), None)
         if node is not None:
