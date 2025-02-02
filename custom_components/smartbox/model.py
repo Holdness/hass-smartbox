@@ -1,7 +1,8 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
-import time
-
+import json
+import ast
 
 
 from homeassistant.const import (
@@ -81,13 +82,16 @@ class SmartboxDevice(object):
             node = SmartboxNode(self, node_info, self._session, status, setup, samples) 
             self._nodes[(node.node_type, node.addr)] = node
             self._samples = node._samples
+            
         
         _LOGGER.debug(f"Creating SocketSession for device {self._dev_id}")
         self._update_manager = UpdateManager(
             self._session,
             self._dev_id,
+            self._nodes,
             reconnect_attempts=self._socket_reconnect_attempts,
             backoff_factor=self._socket_backoff_factor,
+            
         )
 
 
@@ -101,7 +105,7 @@ class SmartboxDevice(object):
 
         _LOGGER.debug(f"Starting UpdateManager task for device {self._dev_id}")
         asyncio.create_task(self._update_manager.run())
-
+    
     def _away_status_update(self, away_status: Dict[str, bool]) -> None: 
         _LOGGER.debug(f"Away status update: {away_status}")
         self._away = away_status["away"]
@@ -129,15 +133,22 @@ class SmartboxDevice(object):
             node.update_setup(node_setup)
         else:
             _LOGGER.error(f"Received setup update for unknown node {node_type} {addr}")
-         
+        
     def _node_samples_update(
-        self, node_type: str, addr: int, node_samples:  SamplesDict 
+        self, node_type: str, addr: int, start:str, end:str, node_samples:  SamplesDict 
     ) -> None:
-        _LOGGER.debug(f"xxxx: {self._samples}")
-        _LOGGER.debug(f"Node samples update: {node_samples}")
+        _LOGGER.debug(f"Node_samples_update: {self._samples}")
+        
+        node_info = {"type":node_type, "addr":addr}
+        loop = asyncio.get_running_loop()
+
+        with ThreadPoolExecutor() as poolexecutor:
+                   x = loop.run_in_executor(None, self._session.set_samples,self._dev_id, node_info) 
+
+        _LOGGER.debug(f"Node samples update: {x}")
         node = self._nodes.get((node_type, addr), None)
         if node is not None:
-            node.update_samples(node_samples)
+            node.update_samples(x)
         else:
             _LOGGER.error(f"Received setup update for unknown node {node_type} {addr}")       
    
@@ -189,6 +200,8 @@ class SmartboxNode(object):
         self._status = status
         self._setup = setup
         self._samples: Dict[str, Any] = samples
+        self._start_time: int = 0
+        self._end_time: int = 0
     
        
     @property
@@ -271,46 +284,65 @@ class SmartboxNode(object):
         )
         self._setup["true_radiant_enabled"] = true_radiant
         
+    
+    @property
+    def start_time(self) -> int:
+        return self._start_time
+   
+    @property
+    def end_time(self) -> int:
+        return self._end_time 
+    
+    
     @property
     
     def samples(self) -> SamplesDict:
         _LOGGER.debug(f"XXXXX {self._samples}")
-        return self._samples 
-        
-    def update_samples(self, samples:SamplesDict) -> None:
+        return self._samples
+    
+      
+    def update_samples(self, temp) -> None:
         _LOGGER.debug(f"XXXXX {self._samples}")
-        _LOGGER.debug(f"Updating node {self.name} samples: {samples}")
-        self._samples = samples
+        
+        x = temp
+        _LOGGER.debug(f"Updating node {self.name} samples: {x}")
+        
+        _LOGGER.debug(f"X: {x}")
+        self._samples = x
         
     def get_energy_used(self, samples) -> float:
-             
-        _LOGGER.debug(f"get_energy_used: Model: Samples: {samples}" )
+        
+        get_samples = str(samples).replace("<Future finished result=","").replace(">","") 
+        new_samples = json.loads(get_samples.replace("'", "\""))
+        self.update_samples(new_samples)
+        _LOGGER.debug(f"get_energy_used: Model: Samples: {new_samples}" )
         startKWh: int=0
         endKWh: int=0
         kwh: int=0
         count: int=0
-        sample : Dict[str, int]  = samples['samples']
-        
+        sample : Dict[str, int]  = new_samples['samples']
+        _LOGGER.debug(f"Len of sample: {len(sample)}")
+
         if len(sample) == 1:
             return kwh
         else:
-        
             for counter in sample:
-                temp2 = str(counter).split(',')
-                _LOGGER.debug(f"{temp2[2]}")            
+                z = str(counter).replace("'", "\"")
+                counter_data_dict = json.loads(z)
+                counters =counter_data_dict.get('counter', None)            
+                _LOGGER.debug(f"Counters: {counters}")            
            
                 if count == 0:
-                    lenCount: int = len(temp2[2])
-                    _LOGGER.debug(f"LenCount:{lenCount}")
-
-                    startKWh =  int(temp2[2][12:lenCount-1])
-                    _LOGGER.debug(f"StartKwh:{startKWh}")
+                    startKWh = counters
+                    self._start_time = counter_data_dict.get('t',None)
+                    _LOGGER.debug(f"StartKwh:{startKWh}, {count}")
                     count = count + 1
                 else:
-                    lenCount: int = len(temp2[2])
-                    endKWh =  int(temp2[2][12:lenCount-1])
-        
-        kwh = endKWh-startKWh               
+                    endKWh = counters
+                    _LOGGER.debug(f"EndKwh:{endKWh}, {count}")
+                    self._end_time = counter_data_dict.get('t',None)
+            kwh = endKWh-startKWh
+        if kwh < 0: kwh = 0               
         
         _LOGGER.debug(f"Model: KWH: {kwh}" )
 
