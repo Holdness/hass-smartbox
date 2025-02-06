@@ -23,7 +23,7 @@ from .const import (
     HEATER_NODE_TYPE_HTR_MOD,
     SMARTBOX_NODES,
 )
-from .model import get_temperature_unit, is_heater_node, is_heating, SmartboxNode
+from .model import get_temperature_unit, is_heater_node, is_heating,  SmartboxNode
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -285,6 +285,9 @@ class SamplesSensor(SmartboxSensorBase):
 
     @property
     def native_value(self) -> float | None:
+        _LOGGER.debug(f"Node Start Time: {self._node._start_time}, Current Time: {time.time()}, Current Node Samples{self._node._samples}")
+        self._node._node_samples_update(self._node.node_type, self._node.addr)
+        _LOGGER.debug(f"Updated Node Samples{self._node._samples}")
         return self._node.get_energy_used(self._node._samples)
         
 
