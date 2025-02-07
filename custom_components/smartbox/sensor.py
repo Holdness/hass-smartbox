@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import time
+import json
 from homeassistant.const import (
     ATTR_LOCKED,
     UnitOfEnergy,
@@ -285,10 +286,22 @@ class SamplesSensor(SmartboxSensorBase):
 
     @property
     def native_value(self) -> float | None:
-        _LOGGER.debug(f"Node Start Time: {self._node._start_time}, Current Time: {time.time()}, Current Node Samples{self._node._samples}")
-        self._node._node_samples_update(self._node.node_type, self._node.addr)
-        _LOGGER.debug(f"Updated Node Samples{self._node._samples}")
-        return self._node.get_energy_used(self._node._samples)
+       if time.time() - self._node._last_run_time > 300:
+            get_samples = str(self._node._samples).replace("<Future finished result=","").replace(">","") 
+            _LOGGER.debug(f"Get Samples: {get_samples}")
+            self._node._samples = json.loads(get_samples.replace("'", "\""))
+            _LOGGER.debug(f"Current Time: {time.time()}, Current Node Samples{self._node._samples}")
+            kwh = self._node.get_energy_used(self._node._samples)
+            self._node._node_samples_update(self._node.node_type, self._node.addr)
+            _LOGGER.debug(f"Updated Node Samples{self._node._samples}")
+            self._node._last_run_time = time.time()
+            _LOGGER.debug(f"KWH: {kwh}")
+            self._node._kwh = kwh
+            return kwh
+       else:
+            _LOGGER.debug(f"KWH: {self._node._kwh}")
+            return self._node._kwh
+
         
 
 class ChargeLevelSensor(SmartboxSensorBase):
