@@ -81,7 +81,7 @@ class SmartboxDevice(object):
                 self._session.get_device_samples, self._dev_id, node_info
             )
            
-            node = SmartboxNode(self, node_info, self._session, status, setup, samples,self._dev_id) 
+            node = SmartboxNode(self, node_info, self._session, status, setup, samples,time.time()-900,self._dev_id, 0) 
             self._nodes[(node.node_type, node.addr)] = node
             self._samples = node._samples
             
@@ -176,7 +176,9 @@ class SmartboxNode(object):
         status: Dict[str, Any],
         setup: Dict[str, Any],
         samples: Dict[str, Any],
-        dev_id: str
+        last_run_time: float,
+        dev_id: str,
+        kwh: float
         ) -> None:
         self._device = device
         self._node_info = node_info
@@ -185,6 +187,8 @@ class SmartboxNode(object):
         self._setup = setup
         self._samples: Dict[str, Any] = samples
         self._dev_id : str = dev_id
+        self._last_run_time: float = last_run_time
+        self._kwh: float = kwh
     
        
     @property
@@ -272,44 +276,32 @@ class SmartboxNode(object):
     @property
     
     def samples(self) -> SamplesDict:
-        _LOGGER.debug(f"samples: {self._samples}")
         return self._samples
     
-    def update_samples(self) -> None:
-        _LOGGER.debug(f"update_samples: {self._samples}")
-        get_samples = str(self._samples).replace("<Future finished result=","").replace(">","") 
-        new_samples = json.loads(get_samples.replace("'", "\""))
-        x = new_samples
-        _LOGGER.debug(f"Updating node {self.name} samples: {x}")
-        
-        _LOGGER.debug(f"X: {x}")
+    def update_samples(self, updated_samples) -> None:
+        x = updated_samples 
+       
         self._samples = x
+        
+    def holding(self, temp) -> None:
+        _LOGGER.debug(f"holding: {temp}")
+        x= temp
+        self.update_samples(x)
 
     def _node_samples_update(
         self, node_type: str, addr: int
     ) -> None:
-        _LOGGER.debug(f"Node_samples_update: {self._samples}")
-        # node = self.get((node_type, addr), None)
-
         node_info = {"type":node_type, "addr":addr}
         loop = asyncio.get_running_loop()
-
-        with ThreadPoolExecutor() as poolexecutor:
-                   x = loop.run_in_executor(None, self._session.get_device_samples,self._dev_id, node_info ) 
-
-        _LOGGER.debug(f"Node samples update: {x}")      
-
-        self.update_samples()
-    
-       
-      
-
+        x = loop.run_in_executor(None, self._session.get_device_samples,self._dev_id, node_info)
+        z = 10000000
+        while z != 0:
+                z = z - 1     
+        _LOGGER.debug(f"Node samples update: {x}") 
+        self.holding(x)
         
     def get_energy_used(self, samples) -> float:
-        _LOGGER.debug(f"get_energy_used: Model: Samples: {samples}" )
-
-        #self.update_samples(new_samples)
-        #_LOGGER.debug(f"get_energy_used: Model: Samples: {new_samples}" )
+        _LOGGER.debug(f"get_energy_used: Model: Samples: {samples}, {self._samples}" )
         startKWh: int=0
         endKWh: int=0
         kwh: int=0
