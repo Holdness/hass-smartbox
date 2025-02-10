@@ -293,7 +293,7 @@ class KwhHourSensor(SmartboxSensorBase):
 
     @property
     def unique_id(self) -> str:
-        return f"{self._node.node_id}_energy"
+        return f"{self._node.node_id}_energy_hour"
 
     @property
     def native_value(self) -> float | None:
