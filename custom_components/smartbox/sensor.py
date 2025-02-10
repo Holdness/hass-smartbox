@@ -69,18 +69,20 @@ async def async_setup_platform(
         ],
         True,
     )
-#    async_add_entities(
-#        [
-#            EnergySensor(node)
-#            for node in hass.data[DOMAIN][SMARTBOX_NODES]
-#            if node.node_type == HEATER_NODE_TYPE_HTR
-#        ],
-#        True,
-#    )
-    # to collect the records for temperture and electricty consumption
+
+    # to collect the records for cumulative electricty consumption
     async_add_entities(
         [
             SamplesSensor(node)
+            for node in hass.data[DOMAIN][SMARTBOX_NODES]
+            if node.node_type == HEATER_NODE_TYPE_HTR
+        ],
+        True,
+    )
+    
+    async_add_entities(
+        [
+            KwhHourSensor(node)
             for node in hass.data[DOMAIN][SMARTBOX_NODES]
             if node.node_type == HEATER_NODE_TYPE_HTR
         ],
@@ -225,46 +227,10 @@ class DutyCycleSensor(SmartboxSensorBase):
         return self._status["duty"]
 
 
-#class EnergySensor(SmartboxSensorBase):
-#    """Smartbox heater energy sensor
-#
-#    Represents the energy consumed by the heater.
-#    """
-#
-#    device_class = SensorDeviceClass.ENERGY
-#    native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
-#    state_class = SensorStateClass.TOTAL
-#
-#    def __init__(self, node: Union[SmartboxNode, MagicMock]) -> None:
-#        super().__init__(node)
-#
-#    @property
-#    def name(self) -> str:
-#        return f"{self._node.name} Energy"
-
-#    @property
-#    def unique_id(self) -> str:
-#        return f"{self._node.node_id}_energy"
-#
-#    @property
-#    def native_value(self) -> float | None:
-#        time_since_last_update = self.time_since_last_update
-#        if time_since_last_update is not None:
-#            return (
-#                float(self._status["power"])
-#                * float(self._status["duty"])
-#                / 100
-#                * time_since_last_update.seconds
-#                / 60
-#                / 60
-#            )
- #       else:
- #           return None
-
 class SamplesSensor(SmartboxSensorBase):
     """Smartbox samples sensor
 
-    Represents the temperture and electrity consumed by the heater for each hour for the day.
+    Represents the cumulative electrity consumed by the heater.
     """
     
     device_class = SensorDeviceClass.ENERGY
@@ -278,7 +244,7 @@ class SamplesSensor(SmartboxSensorBase):
 
     @property
     def name(self) -> str:
-        return f"{self._node.name} KWh"
+        return f"{self._node.name} Cumulative KWh"
 
     @property
     def unique_id(self) -> str:
@@ -286,7 +252,7 @@ class SamplesSensor(SmartboxSensorBase):
 
     @property
     def native_value(self) -> float | None:
-       if time.time() - self._node._last_run_time > 300:
+       if time.time() - self._node._last_run_time > 600:
             get_samples = str(self._node._samples).replace("<Future finished result=","").replace(">","") 
             _LOGGER.debug(f"Get Samples: {get_samples}")
             self._node._samples = json.loads(get_samples.replace("'", "\""))
@@ -295,13 +261,43 @@ class SamplesSensor(SmartboxSensorBase):
             self._node._node_samples_update(self._node.node_type, self._node.addr)
             _LOGGER.debug(f"Updated Node Samples{self._node._samples}")
             self._node._last_run_time = time.time()
+            _LOGGER.debug(f"Api Start Time : {round(time.time() - time.time() % 3600) - 3600}, Last Run Time: {self._node._last_run_time - (round(time.time() - time.time() % 3600) - 3600)}")
             _LOGGER.debug(f"KWH: {kwh}")
-            self._node._kwh = kwh
-            return kwh
+            
+            if kwh != self._node._kwh:
+                 self._node._kwh = kwh
+                 self._node._summation_kwh = self._node._summation_kwh + kwh
+                 _LOGGER.debug(f"KWH: {self._node._kwh}, Summation KWH: {self._node._summation_kwh}")
+            return self._node._summation_kwh
        else:
-            _LOGGER.debug(f"KWH: {self._node._kwh}")
-            return self._node._kwh
+            _LOGGER.debug(f"KWH: {self._node._kwh}, Summation KWH: {self._node._summation_kwh}")
+            return self._node._summation_kwh
 
+class KwhHourSensor(SmartboxSensorBase):
+    """Smartbox samples sensor
+
+    Represents the cumulative electrity consumed by the heater in the last hour.
+    """
+    
+    device_class = SensorDeviceClass.ENERGY
+    native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
+    state_class = SensorStateClass.MEASUREMENT
+
+
+    def __init__(self, node: Union[SmartboxNode, MagicMock]) -> None:
+        super().__init__(node) 
+
+    @property
+    def name(self) -> str:
+        return f"{self._node.name} Hourly KWh"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._node.node_id}_energy"
+
+    @property
+    def native_value(self) -> float | None:
+        return self._node._kwh
         
 
 class ChargeLevelSensor(SmartboxSensorBase):
