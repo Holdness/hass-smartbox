@@ -81,7 +81,7 @@ class SmartboxDevice(object):
                 self._session.get_device_samples, self._dev_id, node_info
             )
            
-            node = SmartboxNode(self, node_info, self._session, status, setup, samples,time.time()-900,self._dev_id, 0) 
+            node = SmartboxNode(self, node_info, self._session, status, setup, samples,time.time()-900,self._dev_id, 0, 0) 
             self._nodes[(node.node_type, node.addr)] = node
             self._samples = node._samples
             
@@ -100,8 +100,6 @@ class SmartboxDevice(object):
         self._update_manager.subscribe_to_device_power_limit(self._power_limit_update)
         self._update_manager.subscribe_to_node_status(self._node_status_update)
         self._update_manager.subscribe_to_node_setup(self._node_setup_update)
-    #    self._update_manager.subscribe_to_node_samples(self._node_samples_update)
-
 
         _LOGGER.debug(f"Starting UpdateManager task for device {self._dev_id}")
         asyncio.create_task(self._update_manager.run())
@@ -178,7 +176,8 @@ class SmartboxNode(object):
         samples: Dict[str, Any],
         last_run_time: float,
         dev_id: str,
-        kwh: float
+        kwh: float,
+        summation_kwh: float
         ) -> None:
         self._device = device
         self._node_info = node_info
@@ -189,6 +188,7 @@ class SmartboxNode(object):
         self._dev_id : str = dev_id
         self._last_run_time: float = last_run_time
         self._kwh: float = kwh
+        self._summation_kwh = summation_kwh
     
        
     @property
